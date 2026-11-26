@@ -76,7 +76,6 @@ spec:
     targetPort: http-port
 
 ---
-# Utilization is measured against the container's CPU request (256m), so 80% = ~205m.
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
