@@ -1,0 +1,98 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: workshop04
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: node
+  namespace: workshop04
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    name: rustfs
+  ports:
+  - name: data-port
+    port: 9000
+    targetPort: data-port
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rustfs-svc
+  namespace: workshop04
+spec:
+  type: ClusterIP
+  selector:
+    name: rustfs
+  ports:
+  - name: data-port
+    port: 9000
+    targetPort: data-port
+  - name: console-port
+    port: 9001
+    targetPort: console-port
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: node
+  namespace: workshop04
+  labels:
+    name: rustfs
+    version: v1
+spec:
+  serviceName: node
+  replicas: 3
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      &pod-labels
+      name: rustfs
+  volumeClaimTemplates:
+  - metadata:
+      name: data-vol
+    spec:
+      storageClassName: standard
+      accessModes: [ ReadWriteOncePod ]
+      resources:
+        requests:
+          storage: 1Gi
+  template:
+    metadata:
+      labels:
+        <<: *pod-labels
+        version: v1
+    spec:
+      securityContext:
+        fsGroup: 10001
+      containers:
+      - name: rustfs-container
+        image: rustfs/rustfs:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: data-port
+          containerPort: 9000
+        - name: console-port
+          containerPort: 9001
+        envFrom:
+        - configMapRef:
+            name: rustfs-cm
+        - secretRef:
+            name: rustfs-secret
+        volumeMounts:
+        - name: data-vol
+          mountPath: /data
+        resources:
+          requests:
+            cpu: 200m
+            memory: 250Mi
+          limits:
+            cpu: 200m
+            memory: 250Mi
